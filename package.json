@@ -1,0 +1,24 @@
+{
+  "name": "virgocloud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Minecraft hosting control plane and Docker node agent",
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @virgocloud/api --filter @virgocloud/web dev",
+    "dev:agent": "pnpm --filter @virgocloud/node-agent dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @virgocloud/api prisma:generate",
+    "db:migrate": "pnpm --filter @virgocloud/api prisma:migrate",
+    "db:push": "pnpm --filter @virgocloud/api prisma:push"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

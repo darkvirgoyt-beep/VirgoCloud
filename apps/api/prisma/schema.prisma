@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ServerEdition {
+  JAVA
+  BEDROCK
+}
+
+enum ServerStatus {
+  PROVISIONING
+  OFFLINE
+  STARTING
+  RUNNING
+  STOPPING
+  ERROR
+  SUSPENDED
+}
+
+enum NodeType {
+  LOCAL
+  DOCKER_HOST
+  CLOUD_VM
+  EXTERNAL
+}
+
+enum BackupStatus {
+  QUEUED
+  UPLOADING
+  AVAILABLE
+  RESTORING
+  FAILED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  passwordHash String?
+  googleSub    String?    @unique
+  role         Role       @default(USER)
+  servers      Server[]
+  limit        ServerLimit?
+  auditLogs    AuditLog[] @relation("actor")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model ServerLimit {
+  id          String @id @default(cuid())
+  userId      String @unique
+  maxServers  Int    @default(3)
+  maxRamMb    Int    @default(8192)
+  maxStorageGb Int   @default(20)
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Node {
+  id                   String       @id @default(cuid())
+  name                 String       @unique
+  type                 NodeType
+  agentUrl             String
+  region               String?
+  secretCiphertext     String
+  status               String       @default("PENDING")
+  cpuPercent           Float        @default(0)
+  ramUsedMb            Int          @default(0)
+  ramTotalMb           Int          @default(0)
+  diskUsedGb           Float        @default(0)
+  diskTotalGb          Float        @default(0)
+  runningServers       Int          @default(0)
+  lastHeartbeatAt      DateTime?
+  servers              Server[]
+  metrics              NodeMetric[]
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model Server {
+  id             String         @id @default(cuid())
+  userId         String
+  nodeId         String?
+  name           String
+  edition        ServerEdition
+  version        String
+  software       String
+  ramMb          Int
+  playerSlots    Int
+  difficulty     String
+  gameMode       String
+  status         ServerStatus   @default(PROVISIONING)
+  host           String?
+  port           Int?
+  containerName  String         @unique
+  storageLimitGb Int            @default(10)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  node           Node?          @relation(fields: [nodeId], references: [id], onDelete: SetNull)
+  metrics        ServerMetric[]
+  files          ServerFile[]
+  backups        Backup[]
+  backupSchedule BackupSchedule?
+  auditLogs      AuditLog[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([nodeId])
+}
+
+model ServerMetric {
+  id        String   @id @default(cuid())
+  serverId  String
+  cpuPercent Float    @default(0)
+  ramUsedMb Int       @default(0)
+  storageUsedGb Float @default(0)
+  playersOnline Int   @default(0)
+  recordedAt DateTime @default(now())
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, recordedAt])
+}
+
+model NodeMetric {
+  id        String   @id @default(cuid())
+  nodeId    String
+  cpuPercent Float
+  ramUsedMb Int
+  diskUsedGb Float
+  recordedAt DateTime @default(now())
+  node      Node     @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+}
+
+model ServerFile {
+  id        String   @id @default(cuid())
+  serverId  String
+  path      String
+  isDirectory Boolean @default(false)
+  sizeBytes BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, path])
+}
+
+model BackupSchedule {
+  id                  String   @id @default(cuid())
+  serverId            String   @unique
+  intervalHours       Int      @default(6)
+  retentionCount      Int      @default(7)
+  enabled             Boolean  @default(true)
+  nextRunAt           DateTime?
+  server              Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Backup {
+  id          String       @id @default(cuid())
+  serverId    String
+  storageKey  String       @unique
+  sizeBytes   BigInt       @default(0)
+  status      BackupStatus @default(QUEUED)
+  checksum    String?
+  triggeredBy String?
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+  server      Server       @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  serverId  String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  actor     User?    @relation("actor", fields: [actorId], references: [id], onDelete: SetNull)
+  server    Server?  @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([serverId, createdAt])
+}
