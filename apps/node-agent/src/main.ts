@@ -21,7 +21,7 @@ const containerSchema = z.object({ containerName: z.string() });
 
 app.get("/health", async () => ({ ok: true, version: "0.1.0" }));
 app.post("/v1/enroll", async () => ({ version: "0.1.0" }));
-app.post("/v1/servers/:serverId/provision", async (request) => provisionServer(serverParams.parse(request.params).serverId, z.object({ containerName: z.string(), edition: z.enum(["JAVA", "BEDROCK"]), version: z.string(), software: z.string(), ramMb: z.number().int(), playerSlots: z.number().int(), difficulty: z.string(), gameMode: z.string(), autoStart: z.boolean().default(true) }).parse(request.body)));
+app.post("/v1/servers/:serverId/provision", async (request) => provisionServer(serverParams.parse(request.params).serverId, z.object({ containerName: z.string(), edition: z.enum(["JAVA", "BEDROCK"]), version: z.string(), software: z.string(), ramMb: z.number().int(), playerSlots: z.number().int(), difficulty: z.string(), gameMode: z.string(), port: z.number().int().min(1).max(65_535), autoStart: z.boolean().default(true) }).parse(request.body)));
 app.post("/v1/servers/:serverId/actions", async (request) => { const input = containerSchema.extend({ action: z.enum(["start", "stop", "restart", "kill"]) }).parse(request.body); return serverAction(serverParams.parse(request.params).serverId, input.containerName, input.action); });
 app.post("/v1/servers/:serverId/reconcile", async (request) => { const input = containerSchema.parse(request.body); return ensureRunning(serverParams.parse(request.params).serverId, input.containerName); });
 app.get("/v1/servers/:serverId/logs", async (request) => { const query = containerSchema.parse(request.query); return serverLogs(serverParams.parse(request.params).serverId, query.containerName); });

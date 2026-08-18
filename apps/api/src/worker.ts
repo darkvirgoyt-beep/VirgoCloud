@@ -18,6 +18,7 @@ async function provision(serverId: string) {
     playerSlots: server.playerSlots,
     difficulty: server.difficulty,
     gameMode: server.gameMode,
+    port: server.port ?? (server.edition === "JAVA" ? 25565 : 19132),
     autoStart: server.desiredState === "RUNNING"
   });
   await prisma.server.update({ where: { id: server.id }, data: { host: result.host, port: result.port, status: result.status } });

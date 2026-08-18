@@ -16,3 +16,6 @@
 - [x] Change the GitHub repository visibility to public and verify anonymous read access.
 - [x] Confirm the required always-on hosting boundary for browser-independent Minecraft operation and identify any remaining deployment automation work; existing automatic restart and recovery features already cover the application side.
 - [x] Evaluate free control-plane, database, and storage options while documenting why they cannot replace persistent Minecraft compute.
+- [x] Document the Oracle Always Free VM deployment procedure for a small persistent VirgoCloud runner and backup stack.
+- [x] Assign predictable per-server game ports so Oracle firewall rules can expose only the required Java or Bedrock ports.
+- [x] Restrict control-plane infrastructure ports to the Oracle VM loopback interface while retaining only the required web, API, agent, and game access paths.

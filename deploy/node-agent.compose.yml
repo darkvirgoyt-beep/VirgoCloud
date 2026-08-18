@@ -4,9 +4,11 @@ services:
       context: ..
       dockerfile: apps/node-agent/Dockerfile
     env_file: ../.env.node-agent
-    ports:
-      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /srv/virgocloud/servers:/srv/virgocloud/servers
     restart: unless-stopped
+networks:
+  default:
+    name: virgocloud_default
+    external: true

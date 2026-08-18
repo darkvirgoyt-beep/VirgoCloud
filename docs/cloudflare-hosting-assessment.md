@@ -20,6 +20,8 @@ Oracle documents an Always Free ARM VM allowance equivalent to **2 OCPUs and 12 
 
 It is not a guaranteed production 24/7 service: Oracle reports that free shapes can be temporarily unavailable, and it may reclaim an Always Free compute instance when CPU, network, and—on A1—memory utilization are all below 20% over a seven-day period. Oracle's Free Tier FAQ also says signup uses payment-card details for identity verification and that accounts idle for 30 days or more may be suspended or terminated. Treat this as a free learning or small private-server option, not a guaranteed no-cost commercial hosting commitment.
 
+OCI's documented launch flow creates a public VCN/subnet, instance, and SSH key. For a public Minecraft deployment, its network security group or security list needs explicit ingress rules for only the required ports. On Ubuntu OCI images, Oracle documents that port access requires both the OCI virtual-firewall rule and an applicable host `iptables` rule; UFW is disabled by default and discouraged in that environment. Keep SSH open while adding any host firewall rule to avoid losing administration access.
+
 ## Sources
 
 1. [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
@@ -30,3 +32,6 @@ It is not a guaranteed production 24/7 service: Oracle reports that free shapes 
 6. [Cloudflare Workers TCP sockets](https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/)
 7. [Oracle Always Free resources](https://docs.oracle.com/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm)
 8. [Oracle Cloud Free Tier FAQ](https://www.oracle.com/cloud/free/faq/)
+9. [Oracle: Launching your first Linux instance](https://docs.oracle.com/iaas/Content/Compute/tutorials/first-linux-instance/overview.htm)
+10. [Oracle: Security lists](https://docs.oracle.com/iaas/Content/Network/Concepts/securitylists.htm)
+11. [Oracle: Enabling Ubuntu network traffic](https://blogs.oracle.com/developers/enabling-network-traffic-to-ubuntu-images-in-oracle-cloud-infrastructure)

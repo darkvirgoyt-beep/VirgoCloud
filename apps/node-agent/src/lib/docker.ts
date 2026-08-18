@@ -39,7 +39,7 @@ const run = (command: string, args: string[]) => new Promise<{ stdout: Buffer; s
   child.on("close", (code) => code === 0 ? resolvePromise({ stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }) : reject(new Error(`${command} failed: ${Buffer.concat(stderr).toString("utf8")}`)));
 });
 
-export async function provisionServer(serverId: string, input: { containerName: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string; autoStart: boolean }) {
+export async function provisionServer(serverId: string, input: { containerName: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string; port: number; autoStart: boolean }) {
   const root = serverRoot(serverId);
   await mkdir(root, { recursive: true, mode: 0o750 });
   const name = safeContainerName(input.containerName);
@@ -69,7 +69,7 @@ export async function provisionServer(serverId: string, input: { containerName: 
       Binds: [`${root}:/data`],
       RestartPolicy: { Name: "unless-stopped" },
       NetworkMode: "bridge",
-      PortBindings: { [gamePort]: [{ HostPort: "" }] },
+      PortBindings: { [gamePort]: [{ HostPort: String(input.port) }] },
       CapDrop: ["ALL"],
       SecurityOpt: ["no-new-privileges:true"],
       PidsLimit: 512

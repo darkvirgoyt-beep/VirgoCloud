@@ -9,6 +9,20 @@ import { orchestrationQueue } from "../lib/queue.js";
 
 const serverIdSchema = z.object({ serverId: z.string().cuid() });
 
+async function allocateGamePort(nodeId: string, edition: "JAVA" | "BEDROCK") {
+  const basePort = edition === "JAVA" ? 25565 : 19132;
+  const occupied = await prisma.server.findMany({
+    where: { nodeId, edition, port: { not: null } },
+    select: { port: true }
+  });
+  const usedPorts = new Set(occupied.map(({ port }) => port).filter((port): port is number => port !== null));
+  for (let offset = 0; offset < 1_000; offset += 1) {
+    const port = basePort + offset;
+    if (!usedPorts.has(port)) return port;
+  }
+  throw new Error("No game ports remain available on the selected node.");
+}
+
 export async function serverRoutes(app: FastifyInstance) {
   app.get("/v1/servers", { preHandler: [app.authenticate] }, async (request) => {
     const user = currentUser(request);
@@ -30,8 +44,9 @@ export async function serverRoutes(app: FastifyInstance) {
       : await prisma.node.findFirst({ where: { status: "ONLINE" }, orderBy: { cpuPercent: "asc" } });
     if (!node) return reply.code(503).send({ message: "No healthy node is available. Ask an administrator to enroll a runner." });
     const id = randomUUID();
+    const port = await allocateGamePort(node.id, input.edition);
     const server = await prisma.server.create({
-      data: { id, userId: user.id, nodeId: node.id, name: input.name, edition: input.edition, version: input.version, software: input.software, ramMb: input.ramMb, playerSlots: input.playerSlots, difficulty: input.difficulty, gameMode: input.gameMode, containerName: `vc-${id.replace(/-/g, "")}` }
+      data: { id, userId: user.id, nodeId: node.id, name: input.name, edition: input.edition, version: input.version, software: input.software, ramMb: input.ramMb, playerSlots: input.playerSlots, difficulty: input.difficulty, gameMode: input.gameMode, port, containerName: `vc-${id.replace(/-/g, "")}` }
     });
     await orchestrationQueue.add("provision", { kind: "provision", serverId: server.id }, { jobId: `provision:${server.id}`, removeOnComplete: 100, removeOnFail: 100 });
     await prisma.auditLog.create({ data: { actorId: user.id, serverId: server.id, action: "server.create", metadata: input } });
