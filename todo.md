@@ -14,3 +14,4 @@
 - [x] Test, document, commit, and publish the autonomous 24/7 operation update.
 - [x] Add restart policies to all control-plane services so the web UI, API, worker, database, queue, and storage restart after a host reboot.
 - [x] Change the GitHub repository visibility to public and verify anonymous read access.
+- [x] Confirm the required always-on hosting boundary for browser-independent Minecraft operation and identify any remaining deployment automation work; existing automatic restart and recovery features already cover the application side.
