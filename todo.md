@@ -13,3 +13,4 @@
 - [x] Add desired server-state persistence, automatic container restarts, host-reboot recovery, and a browser-terminal-only-on-demand model.
 - [x] Test, document, commit, and publish the autonomous 24/7 operation update.
 - [x] Add restart policies to all control-plane services so the web UI, API, worker, database, queue, and storage restart after a host reboot.
+- [x] Change the GitHub repository visibility to public and verify anonymous read access.
