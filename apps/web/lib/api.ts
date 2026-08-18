@@ -1,5 +1,5 @@
 export type User = { id: string; email: string; name?: string | null; role: "USER" | "ADMIN" };
-export type Server = { id: string; name: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string; status: string; host?: string | null; port?: number | null; metrics?: Array<{ cpuPercent: number; ramUsedMb: number; storageUsedGb: number; playersOnline: number }>; node?: { name: string; region?: string | null } };
+export type Server = { id: string; name: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string; status: string; desiredState: "RUNNING" | "STOPPED"; host?: string | null; port?: number | null; metrics?: Array<{ cpuPercent: number; ramUsedMb: number; storageUsedGb: number; playersOnline: number }>; node?: { name: string; region?: string | null } };
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 export const authStore = {

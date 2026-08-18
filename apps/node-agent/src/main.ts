@@ -3,7 +3,7 @@ import cors from "@fastify/cors";
 import systeminformation from "systeminformation";
 import { z } from "zod";
 import { env } from "./env.js";
-import { archiveAndUpload, deleteFile, getFile, listFiles, provisionServer, restoreArchive, serverAction, serverLogs, terminalCommand, putFile, uploadFile } from "./lib/docker.js";
+import { archiveAndUpload, deleteFile, ensureRunning, getFile, listFiles, provisionServer, restoreArchive, serverAction, serverLogs, terminalCommand, putFile, uploadFile } from "./lib/docker.js";
 import { assertValidSignature, safeRelativePath } from "./lib/security.js";
 import { createHmac } from "node:crypto";
 
@@ -21,8 +21,9 @@ const containerSchema = z.object({ containerName: z.string() });
 
 app.get("/health", async () => ({ ok: true, version: "0.1.0" }));
 app.post("/v1/enroll", async () => ({ version: "0.1.0" }));
-app.post("/v1/servers/:serverId/provision", async (request) => provisionServer(serverParams.parse(request.params).serverId, z.object({ containerName: z.string(), edition: z.enum(["JAVA", "BEDROCK"]), version: z.string(), software: z.string(), ramMb: z.number().int(), playerSlots: z.number().int(), difficulty: z.string(), gameMode: z.string() }).parse(request.body)));
+app.post("/v1/servers/:serverId/provision", async (request) => provisionServer(serverParams.parse(request.params).serverId, z.object({ containerName: z.string(), edition: z.enum(["JAVA", "BEDROCK"]), version: z.string(), software: z.string(), ramMb: z.number().int(), playerSlots: z.number().int(), difficulty: z.string(), gameMode: z.string(), autoStart: z.boolean().default(true) }).parse(request.body)));
 app.post("/v1/servers/:serverId/actions", async (request) => { const input = containerSchema.extend({ action: z.enum(["start", "stop", "restart", "kill"]) }).parse(request.body); return serverAction(serverParams.parse(request.params).serverId, input.containerName, input.action); });
+app.post("/v1/servers/:serverId/reconcile", async (request) => { const input = containerSchema.parse(request.body); return ensureRunning(serverParams.parse(request.params).serverId, input.containerName); });
 app.get("/v1/servers/:serverId/logs", async (request) => { const query = containerSchema.parse(request.query); return serverLogs(serverParams.parse(request.params).serverId, query.containerName); });
 app.post("/v1/servers/:serverId/command", async (request) => { const input = containerSchema.extend({ command: z.string().min(1).max(1000) }).parse(request.body); return terminalCommand(serverParams.parse(request.params).serverId, input.containerName, input.command); });
 app.get("/v1/servers/:serverId/files", async (request) => listFiles(serverParams.parse(request.params).serverId, z.object({ path: z.string().optional() }).parse(request.query).path));

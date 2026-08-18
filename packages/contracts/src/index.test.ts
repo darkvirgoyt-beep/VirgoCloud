@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createServerSchema, filePathSchema } from "./index.js";
+import { createServerSchema, filePathSchema, updateServerSchema } from "./index.js";
 
 describe("control-plane contracts", () => {
   it("accepts a valid Java server request", () => {
@@ -20,5 +20,9 @@ describe("control-plane contracts", () => {
     expect(() => filePathSchema.parse("../secrets.txt")).toThrow();
     expect(() => filePathSchema.parse("plugins/../../host")).toThrow();
   });
-});
 
+  it("only accepts explicit durable running or stopped server intent", () => {
+    expect(updateServerSchema.parse({ desiredState: "RUNNING" }).desiredState).toBe("RUNNING");
+    expect(() => updateServerSchema.parse({ desiredState: "PAUSED" })).toThrow();
+  });
+});

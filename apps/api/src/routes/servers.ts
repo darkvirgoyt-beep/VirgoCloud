@@ -55,7 +55,7 @@ export async function serverRoutes(app: FastifyInstance) {
     const server = await accessibleServer(request, serverId);
     if (!server.node) throw new Error("This server is not assigned to a node.");
     const result = await callAgent<{ status: string }>(server.node, "POST", `/v1/servers/${server.id}/actions`, { action, containerName: server.containerName });
-    await prisma.server.update({ where: { id: server.id }, data: { status: result.status as never } });
+    await prisma.server.update({ where: { id: server.id }, data: { status: result.status as never, desiredState: action === "stop" ? "STOPPED" : "RUNNING" } });
     await prisma.auditLog.create({ data: { actorId: currentUser(request).id, serverId: server.id, action: `server.${action}` } });
     return result;
   });

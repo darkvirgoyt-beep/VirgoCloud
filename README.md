@@ -89,6 +89,27 @@ Manual backup can be called from the dashboard or with:
 ./scripts/backup.sh <server-id> <jwt-token>
 ```
 
+## Autonomous 24/7 operation
+
+Creating a server sets its desired state to **RUNNING**. The provisioning worker automatically starts the container; the browser terminal is only an on-demand interface for viewing logs and sending approved commands. It is not a process that must stay open.
+
+The runner creates every Minecraft container with Docker's `unless-stopped` restart policy. A game process that crashes is restarted by Docker, and a runner host reboot restores every server that was not explicitly stopped. In addition, the control-plane worker performs a signed reconciliation pass each minute: it asks online runners to start containers whose persisted desired state is `RUNNING`.
+
+| Dashboard action | Durable intent | Effect after a crash or runner reboot |
+| --- | --- | --- |
+| **Start / Keep online** | `RUNNING` | The runner starts it now and continuously attempts to keep it online. |
+| **Restart** | `RUNNING` | The runner restarts it and preserves automatic recovery. |
+| **Kill** | `RUNNING` | Docker's restart policy and the worker reconciliation restore it. |
+| **Stop / disable** | `STOPPED` | The runner stops it and it remains stopped until Start is selected again. |
+
+For this to work continuously, run the control-plane Compose stack and the separate runner Compose stack with Docker restart policies enabled on machines that stay powered on. The browser can be closed at any time.
+
+If you are upgrading an existing installation, apply the new durable desired-state column before restarting the worker:
+
+```bash
+pnpm db:push
+```
+
 ## Development
 
 | Command | Purpose |

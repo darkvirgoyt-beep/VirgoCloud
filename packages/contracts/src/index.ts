@@ -3,6 +3,7 @@ import { z } from "zod";
 export const userRoleSchema = z.enum(["USER", "ADMIN"]);
 export const minecraftEditionSchema = z.enum(["JAVA", "BEDROCK"]);
 export const serverStatusSchema = z.enum(["PROVISIONING", "OFFLINE", "STARTING", "RUNNING", "STOPPING", "ERROR", "SUSPENDED"]);
+export const desiredServerStateSchema = z.enum(["RUNNING", "STOPPED"]);
 export const nodeTypeSchema = z.enum(["LOCAL", "DOCKER_HOST", "CLOUD_VM", "EXTERNAL"]);
 export const serverActionSchema = z.enum(["start", "stop", "restart", "kill"]);
 export const difficultySchema = z.enum(["peaceful", "easy", "normal", "hard"]);
@@ -20,7 +21,7 @@ export const createServerSchema = z.object({
   nodeId: z.string().cuid().optional()
 });
 
-export const updateServerSchema = createServerSchema.partial().omit({ nodeId: true });
+export const updateServerSchema = createServerSchema.partial().omit({ nodeId: true }).extend({ desiredState: desiredServerStateSchema.optional() });
 
 export const filePathSchema = z.string().trim().min(1).max(255).refine(
   (value) => !value.startsWith("/") && !value.split("/").includes("..") && !value.includes("\\"),

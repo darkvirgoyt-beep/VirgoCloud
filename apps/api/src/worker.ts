@@ -9,7 +9,7 @@ async function provision(serverId: string) {
   const server = await prisma.server.findUnique({ where: { id: serverId }, include: { node: true } });
   if (!server?.node) throw new Error("Server has no assigned node.");
   await prisma.server.update({ where: { id: server.id }, data: { status: "PROVISIONING" } });
-  const result = await callAgent<{ host?: string; port?: number; status: "OFFLINE" | "ERROR" }>(server.node, "POST", `/v1/servers/${server.id}/provision`, {
+  const result = await callAgent<{ host?: string; port?: number; status: "OFFLINE" | "RUNNING" | "ERROR" }>(server.node, "POST", `/v1/servers/${server.id}/provision`, {
     containerName: server.containerName,
     edition: server.edition,
     version: server.version,
@@ -17,7 +17,8 @@ async function provision(serverId: string) {
     ramMb: server.ramMb,
     playerSlots: server.playerSlots,
     difficulty: server.difficulty,
-    gameMode: server.gameMode
+    gameMode: server.gameMode,
+    autoStart: server.desiredState === "RUNNING"
   });
   await prisma.server.update({ where: { id: server.id }, data: { host: result.host, port: result.port, status: result.status } });
 }
@@ -45,18 +46,36 @@ async function cleanup(serverId: string) {
   if (oldBackups.length) await prisma.backup.deleteMany({ where: { id: { in: oldBackups.map((backup) => backup.id) } } });
 }
 
+/** This is independent of browser sessions: every minute, it restarts only servers that users have explicitly marked as desired RUNNING. */
+async function reconcileRunningServers() {
+  const servers = await prisma.server.findMany({ where: { desiredState: "RUNNING" }, include: { node: true } });
+  for (const server of servers) {
+    if (!server.node || server.node.status !== "ONLINE") continue;
+    try {
+      const result = await callAgent<{ status: "RUNNING" | "OFFLINE" }>(server.node, "POST", `/v1/servers/${server.id}/reconcile`, { containerName: server.containerName });
+      await prisma.server.update({ where: { id: server.id }, data: { status: result.status } });
+    } catch (error) {
+      console.warn(`Reconciliation deferred for ${server.id}:`, error instanceof Error ? error.message : error);
+    }
+  }
+}
+
 const worker = new Worker<OrchestrationJob>("orchestration", async (job) => {
   if (job.data.kind === "provision") return provision(job.data.serverId);
   if (job.data.kind === "backup") return backup(job.data.serverId, job.data.backupId, job.data.requestedBy);
-  return cleanup(job.data.serverId);
+  if (job.data.kind === "cleanup") return cleanup(job.data.serverId);
+  return reconcileRunningServers();
 }, { connection: redis, concurrency: 4 });
+
+void orchestrationQueue.add("reconcile-running-servers", { kind: "reconcile" }, { jobId: "reconcile-running-servers", repeat: { every: 60_000 }, removeOnComplete: 10, removeOnFail: 10 }).catch((error) => console.error("Could not schedule server reconciliation:", error));
 
 worker.on("completed", (job) => console.info(`Completed ${job.name}:${job.id}`));
 worker.on("failed", async (job, error) => {
   console.error(`Failed ${job?.name}:${job?.id}`, error);
-  const serverId = job?.data.serverId;
-  if (serverId && job?.data.kind === "backup" && job.data.backupId) await prisma.backup.update({ where: { id: job.data.backupId }, data: { status: "FAILED" } }).catch(() => undefined);
-  if (serverId && job?.data.kind === "provision") await prisma.server.update({ where: { id: serverId }, data: { status: "ERROR" } }).catch(() => undefined);
+  const data = job?.data;
+  if (!data) return;
+  if (data.kind === "backup" && data.backupId) await prisma.backup.update({ where: { id: data.backupId }, data: { status: "FAILED" } }).catch(() => undefined);
+  if (data.kind === "provision") await prisma.server.update({ where: { id: data.serverId }, data: { status: "ERROR" } }).catch(() => undefined);
 });
 
 process.on("SIGTERM", async () => { await worker.close(); await redis.quit(); await prisma.$disconnect(); process.exit(0); });

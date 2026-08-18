@@ -39,7 +39,7 @@ const run = (command: string, args: string[]) => new Promise<{ stdout: Buffer; s
   child.on("close", (code) => code === 0 ? resolvePromise({ stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }) : reject(new Error(`${command} failed: ${Buffer.concat(stderr).toString("utf8")}`)));
 });
 
-export async function provisionServer(serverId: string, input: { containerName: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string }) {
+export async function provisionServer(serverId: string, input: { containerName: string; edition: "JAVA" | "BEDROCK"; version: string; software: string; ramMb: number; playerSlots: number; difficulty: string; gameMode: string; autoStart: boolean }) {
   const root = serverRoot(serverId);
   await mkdir(root, { recursive: true, mode: 0o750 });
   const name = safeContainerName(input.containerName);
@@ -48,7 +48,15 @@ export async function provisionServer(serverId: string, input: { containerName: 
     ? [`EULA=TRUE`, `VERSION=${input.version}`, `TYPE=${input.software}`, `MEMORY=${input.ramMb}M`, `MAX_PLAYERS=${input.playerSlots}`, `DIFFICULTY=${input.difficulty}`, `MODE=${input.gameMode}`, `ENABLE_RCON=true`, `RCON_PASSWORD=${serverId}`]
     : [`EULA=TRUE`, `VERSION=${input.version}`, `SERVER_NAME=${name}`, `MAX_PLAYERS=${input.playerSlots}`, `DIFFICULTY=${input.difficulty}`, `GAMEMODE=${input.gameMode}`];
   const existing = docker.getContainer(name);
-  try { await existing.inspect(); return { status: "OFFLINE" as const }; } catch { /* managed container not yet created */ }
+  try {
+    let details = await existing.inspect();
+    if (input.autoStart && !details.State.Running) {
+      await existing.start();
+      details = await existing.inspect();
+    }
+    const existingPort = details.NetworkSettings.Ports[input.edition === "JAVA" ? "25565/tcp" : "19132/udp"]?.[0];
+    return { status: details.State.Running ? "RUNNING" as const : "OFFLINE" as const, host: env.AGENT_PUBLIC_HOST, port: existingPort ? Number(existingPort.HostPort) : undefined };
+  } catch { /* managed container not yet created */ }
   const gamePort = input.edition === "JAVA" ? "25565/tcp" : "19132/udp";
   const container = await docker.createContainer({
     name,
@@ -68,9 +76,18 @@ export async function provisionServer(serverId: string, input: { containerName: 
     },
     ExposedPorts: { [gamePort]: {} }
   });
+  if (input.autoStart) await container.start();
   const details = await container.inspect();
   const binding = details.NetworkSettings.Ports[gamePort]?.[0];
-  return { status: "OFFLINE" as const, host: env.AGENT_PUBLIC_HOST, port: binding ? Number(binding.HostPort) : undefined };
+  return { status: details.State.Running ? "RUNNING" as const : "OFFLINE" as const, host: env.AGENT_PUBLIC_HOST, port: binding ? Number(binding.HostPort) : undefined };
+}
+
+/** Restores a server whose persisted desired state is RUNNING; used by the background control-plane worker. */
+export async function ensureRunning(serverId: string, containerName: string) {
+  const { container, details } = await managedContainer(serverId, containerName);
+  if (!details.State.Running) await container.start();
+  const refreshed = await container.inspect();
+  return { status: refreshed.State.Running ? "RUNNING" as const : "OFFLINE" as const };
 }
 
 export async function serverAction(serverId: string, containerName: string, action: "start" | "stop" | "restart" | "kill") {

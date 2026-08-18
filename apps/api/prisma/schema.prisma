@@ -27,6 +27,11 @@ enum ServerStatus {
   SUSPENDED
 }
 
+enum DesiredServerState {
+  RUNNING
+  STOPPED
+}
+
 enum NodeType {
   LOCAL
   DOCKER_HOST
@@ -99,6 +104,7 @@ model Server {
   difficulty     String
   gameMode       String
   status         ServerStatus   @default(PROVISIONING)
+  desiredState   DesiredServerState @default(RUNNING)
   host           String?
   port           Int?
   containerName  String         @unique

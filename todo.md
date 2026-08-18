@@ -10,3 +10,5 @@
 - [x] Add standalone Docker Compose, environment templates, setup scripts, CI workflow, and deployment documentation.
 - [x] Write and run automated unit tests, type checks, linting, and production builds.
 - [x] Commit all source files and provide the completed GitHub repository link.
+- [x] Add desired server-state persistence, automatic container restarts, host-reboot recovery, and a browser-terminal-only-on-demand model.
+- [x] Test, document, commit, and publish the autonomous 24/7 operation update.
