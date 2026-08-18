@@ -2,11 +2,11 @@
 
 This guide uses one Ubuntu VM as both the VirgoCloud control plane and the Docker runner. It is intended for a small private server. The VM, Docker services, node agent, and Minecraft containers can remain online after the phone browser and Termux session are closed.
 
-> Oracle Always Free availability is not guaranteed, and Oracle may reclaim qualifying idle instances under its published policy. Treat this as an eligible free-tier opportunity rather than a service-level guarantee. [1]
+> Oracle documents an Always Free equivalent of **2 OCPUs and 12 GB memory** for Ampere A1 Flex instances, together with **200 GB** of total Always Free block-volume storage in the home region. Availability is not guaranteed, and Oracle may reclaim a VM that stays below its published 7-day CPU, network, and memory-utilization thresholds. Treat this as an eligible free-tier opportunity rather than a service-level guarantee. [1]
 
 ## Create the VM and allow only required traffic
 
-In the Oracle console, create an **Always Free eligible Ubuntu** instance. Generate and download an SSH key during the instance launch flow. Oracle documents the Linux-instance launch process and the security-list/NSG controls used to allow public traffic. [2] [3]
+In the Oracle console, create an **Always Free eligible Ubuntu** instance in the home region. Select the `VM.Standard.A1.Flex` Arm shape only when the Console labels it Always Free eligible, then allocate a small configuration such as **1 OCPU and 6 GB memory** for one light Java server plus the control plane. Generate and download an SSH key during the instance launch flow. Oracle documents the Linux-instance launch process and recommends network security groups as a virtual-firewall option. [1] [2] [3]
 
 For a small **Java** server, create ingress rules for SSH `TCP 22`, the web panel `TCP 3000`, the API `TCP 4000`, and Minecraft `TCP 25565`. For **Bedrock**, use `UDP 19132` instead of the Java game-port rule. Do not open `5432`, `6379`, `8080`, `9000`, or `9001`; the supplied Compose files bind the internal database, queue, object storage, and node-agent ports away from the public network.
 
